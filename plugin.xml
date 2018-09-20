@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin xmlns="http://apache.org/cordova/ns/plugins/1.0"
+        id="cordova-plugin-all-locks" version="0.1.0">
+    <name>All locks</name>
+    <description>Cordova All Locks plugin</description>
+    <license>MIT</license>
+    <keywords>cordova,foreground,background,wifi,wakelock</keywords>
+    <js-module src="www/AllLocks.js" name="AllLocks">
+        <clobbers target="cordova.plugins.AllLocks" />
+    </js-module>
+    <platform name="android">
+        <source-file src="src/AllLocksPlugin.java" target-dir="src/com/restaumatic/alllocks" />
+    </platform>
+    <engines>
+        <engine name="android-sdk" version=">=5" />
+    </engines>
+</plugin>
