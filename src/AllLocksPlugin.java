@@ -10,6 +10,7 @@ import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.PowerManager;
 import android.provider.Settings;
+import android.util.Log;
 
 import org.apache.cordova.CordovaWebView;
 import org.apache.cordova.CallbackContext;
@@ -30,30 +31,34 @@ public class AllLocksPlugin extends CordovaPlugin {
   public void initialize(CordovaInterface cordova, CordovaWebView webView) {
     super.initialize(cordova, webView);
 
-    this.wifiManager = (WifiManager) cordova.getContext().getApplicationContext().getSystemService(Context.WIFI_SERVICE);
-    this.powerManager = (PowerManager) cordova.getActivity().getSystemService(Context.POWER_SERVICE);
+    wifiManager = (WifiManager) cordova.getContext().getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+    powerManager = (PowerManager) cordova.getActivity().getSystemService(Context.POWER_SERVICE);
   }
 
   @Override
   public boolean execute(String action, JSONArray args,
       CallbackContext callbackContext) throws JSONException {
 
+    Log.d("AllLocks", "Executing "+action);
     Context context = cordova.getContext();
-    if (action.equals("acquire") ) {
-      this.acquireWakeLock(PowerManager.PARTIAL_WAKE_LOCK);
-      this.acquireWifiLock();
-    } else if (action.equals("release")) {
-      this.releaseWakeLock();
-      this.releaseWifiLock();
-    } else if (action.equals("battery-optimization")) {
-      Intent intent = new Intent();
-      intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-      String packageName = context.getPackageName();
-      if (Build.VERSION.SDK_INT >= 23 && !powerManager.isIgnoringBatteryOptimizations(packageName)) {
-        intent.setAction(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
-        intent.setData(Uri.parse("package:" + packageName));
-        context.startActivity(intent);
-      }
+    switch (action) {
+      case "acquire":
+        acquireWifiLock();
+        acquireWakeLock();
+        break;
+      case "release":
+        releaseWifiLock();
+        releaseWakeLock();
+        break;
+      case "battery-optimization":
+        Intent intent = new Intent();
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        String packageName = context.getPackageName();
+        if (Build.VERSION.SDK_INT >= 23 && !powerManager.isIgnoringBatteryOptimizations(packageName)) {
+            intent.setAction(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
+            context.startActivity(intent);
+        }
+        break;
     }
 
     callbackContext.success();
@@ -61,42 +66,47 @@ public class AllLocksPlugin extends CordovaPlugin {
   }
 
 
-  private void acquireWakeLock(int flags) {
-    if (this.wakeLock == null) {
-      this.wakeLock = this.powerManager.newWakeLock(flags, "AllLocksPlugin");
-      this.wakeLock.acquire();
+  private void acquireWakeLock() {
+    if (wakeLock == null) {
+      Log.d("WakeLock", "Acquring..");
+      wakeLock = this.powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "AllLocksPluginWakeLock");
+      wakeLock.acquire();
     }
 
   }
 
   private void acquireWifiLock() {
-    if (this.wifiLock == null) {
-      this.wifiLock = this.wifiManager.createWifiLock("wifiLock");
-      this.wifiLock.acquire();
+    if (wifiLock == null) {
+      Log.d("WifiLock", "Acquring..");
+      wifiLock = this.wifiManager.createWifiLock("AllLocksPluginWifiLock");
+      wifiLock.acquire();
     }
   }
 
 
   private void releaseWakeLock() {
-    if (this.wakeLock != null) {
-      this.wakeLock.release();
-      this.wakeLock = null;
+    if (wakeLock != null) {
+      Log.d("WakeLock", "Releasing..");
+      wakeLock.release();
+      wakeLock = null;
     }
 
   }
 
   private void releaseWifiLock() {
-    if (this.wifiLock != null) {
-      this.wifiLock.release();
-      this.wifiLock = null;
+    if (wifiLock != null) {
+      Log.d("WifiLock", "Releasing..");
+      wifiLock.release();
+      wifiLock = null;
     }
   }
 
 
   @Override
   public void onPause(boolean multitasking) {
-    if(this.releaseOnPause && this.wakeLock != null) {
-      this.wakeLock.release();
+    if (releaseOnPause && wakeLock != null) {
+      Log.d("WifiLock", "Releasing on pause..");
+      wakeLock.release();
     }
 
     super.onPause(multitasking);
@@ -104,7 +114,8 @@ public class AllLocksPlugin extends CordovaPlugin {
 
   @Override
   public void onResume(boolean multitasking) {
-    if(this.releaseOnPause && this.wakeLock != null) {
+    if (releaseOnPause && wakeLock != null) {
+      Log.d("WifiLock", "Acquiring on resume..");
       this.wakeLock.acquire();
     }
 
