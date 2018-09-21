@@ -6,6 +6,6 @@ exports.release = function () {
   cordova.exec(null, null, 'AllLocks', 'release', []);
 };
 
-exports.batteryOptimization = function () {
-  cordova.exec(null, null, 'AllLocks', 'battery-optimization', []);
+exports.batteryOptimization = function (title, text) {
+  cordova.exec(null, null, 'AllLocks', 'battery-optimization', [title, text]);
 };

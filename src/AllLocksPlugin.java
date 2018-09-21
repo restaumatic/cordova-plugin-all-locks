@@ -3,8 +3,12 @@ package com.restaumatic.alllocks;
 import org.json.JSONArray;
 import org.json.JSONException;
 
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.app.Notification;
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.Resources;
 import android.net.Uri;
 import android.net.wifi.WifiManager;
 import android.os.Build;
@@ -26,6 +30,11 @@ public class AllLocksPlugin extends CordovaPlugin {
   private WifiManager wifiManager = null;
   private WifiManager.WifiLock wifiLock = null;
 
+  private NotificationManager notificationManager = null;
+
+  public static final int NOTIFICATION_ID = 1232145;
+  public static final String NOTIFICATION_TITLE = "Battery";
+  public static final String NOTIFICATION_TEXT = "Please disable battery optimizations";
 
   @Override
   public void initialize(CordovaInterface cordova, CordovaWebView webView) {
@@ -33,11 +42,12 @@ public class AllLocksPlugin extends CordovaPlugin {
 
     wifiManager = (WifiManager) cordova.getContext().getApplicationContext().getSystemService(Context.WIFI_SERVICE);
     powerManager = (PowerManager) cordova.getActivity().getSystemService(Context.POWER_SERVICE);
+    notificationManager = (NotificationManager) cordova.getContext().getSystemService(Context.NOTIFICATION_SERVICE);
   }
 
   @Override
   public boolean execute(String action, JSONArray args,
-      CallbackContext callbackContext) throws JSONException {
+      CallbackContext callbackContext) {
 
     Log.d("AllLocks", "Executing "+action);
     Context context = cordova.getContext();
@@ -51,12 +61,29 @@ public class AllLocksPlugin extends CordovaPlugin {
         releaseWakeLock();
         break;
       case "battery-optimization":
-        Intent intent = new Intent();
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        String packageName = context.getPackageName();
-        if (Build.VERSION.SDK_INT >= 23 && !powerManager.isIgnoringBatteryOptimizations(packageName)) {
-            intent.setAction(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
-            context.startActivity(intent);
+        // Create notification to disable battery optimizations if they are enabled
+        if (Build.VERSION.SDK_INT >= 23
+                && !powerManager.isIgnoringBatteryOptimizations(context.getPackageName())) {
+          String title = args.optString(0, NOTIFICATION_TITLE);
+          String text = args.optString(1, NOTIFICATION_TEXT);
+          Intent intent = new Intent();
+          intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+          intent.setAction(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
+
+          PendingIntent pendingIntent = PendingIntent.getActivity(context, NOTIFICATION_ID, intent, 0);
+
+          Notification notification = new Notification.Builder(context)
+                  .setContentTitle(title)
+                  .setContentText(text)
+                  .setOngoing(true)
+                  .setAutoCancel(true)
+                  .setSmallIcon(context.getApplicationInfo().icon)
+                  .setContentIntent(pendingIntent)
+                  .setPriority(Notification.PRIORITY_MAX)
+                  .setVibrate(new long[] {1000, 1000})
+                  .build();
+
+          notificationManager.notify(NOTIFICATION_ID, notification);
         }
         break;
     }
@@ -64,7 +91,6 @@ public class AllLocksPlugin extends CordovaPlugin {
     callbackContext.success();
     return true;
   }
-
 
   private void acquireWakeLock() {
     if (wakeLock == null) {
